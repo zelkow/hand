@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 import time
 
-blur = 1
+blur = 10
 def nothing(x):
   pass
 
@@ -12,7 +12,8 @@ def nothing(x):
 
 fgbg = cv2.createBackgroundSubtractorMOG2()
 
-
+email_update_interval = 60 # sends an email only once in this time interval
+last_epoch = 30
 # Color skin definition
 #lower_skin = np.array([0,48,80], dtype=np.uint8)
 #upper_skin = np.array([0,255,255], dtype=np.uint8)
@@ -32,7 +33,7 @@ cv2.createTrackbar("Low-bri", "Bar",0,255,nothing)
 
 
 # Choosing a webcam
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture(1)
 
 
 ############## capturing static background
@@ -65,12 +66,12 @@ while b:
     ls = cv2.getTrackbarPos("Low-sat", "Bar")
     lb = cv2.getTrackbarPos("Low-bri", "Bar")
 
-    blur = 10
+    #blur = 10
 
     # Applies masks
         
     clrMask = cv2.inRange(hsv, lower_skin, upper_skin)
-    blrMask = cv2.blur(clrMask, (blur,blur))
+    blrMask = cv2.blur(clrMask, (blur,blur)) # filtering skin color change : hsv to clrMask
     fgMask=fgbg.apply(blrMask)
     #fgMask = blrMask
     
@@ -79,11 +80,18 @@ while b:
 
     for countour in countours:
         area = cv2.contourArea(countour)
-        if area > 5000:
+        if area > 1000:
             (x,y,w,h) = cv2.boundingRect(countour)
             cv2.rectangle(frame, (x,y), (x+w,y+h),(0,255,0),2)
+            if (time.time() - last_epoch) > email_update_interval:
+                last_epoch = time.time()
+                print("Saving frame")
+                cv2.imwrite("frame.jpg", frame)
+                print("done!")
         break
 
+
+    print(time.time() - last_epoch)
     cv2.rectangle(frame, (10, 2), (100,20), (255,255,255), -1)
     cv2.putText(frame, str(cam.get(cv2.CAP_PROP_FPS)), (15, 15),cv2.FONT_HERSHEY_SIMPLEX, 0.5 , (0,0,0))
     cv2.imshow('Frame', frame)
